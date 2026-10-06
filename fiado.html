@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Controle de Fiado - Cobrança</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      margin: 0;
+      padding: 16px;
+      background: #f1f5f9;
+      color: #1e293b;
+      max-width: 650px;
+      margin: 0 auto;
+    }
+
+    header {
+      margin-bottom: 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    h2 { margin: 0; }
+
+    .filter-box {
+      background: white;
+      padding: 12px;
+      border-radius: 8px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      margin-bottom: 14px;
+    }
+
+    select {
+      flex: 1;
+      padding: 9px;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      font-size: 1rem;
+      background: white;
+    }
+
+    .summary-card {
+      background: #0f172a;
+      color: white;
+      padding: 16px;
+      border-radius: 8px;
+      margin-bottom: 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .summary-card span { font-size: 0.85rem; opacity: 0.8; }
+    .summary-card strong { font-size: 1.4rem; display: block; color: #ef4444; }
+
+    .cliente-card {
+      background: white;
+      padding: 16px;
+      border-radius: 8px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      margin-bottom: 12px;
+    }
+
+    .cliente-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      border-bottom: 1px solid #f1f5f9;
+      padding-bottom: 8px;
+      margin-bottom: 8px;
+    }
+
+    .cliente-nome { font-size: 1.1rem; font-weight: bold; }
+    .cliente-tel { font-size: 0.85rem; color: #64748b; }
+    .cliente-total { font-size: 1.3rem; font-weight: bold; color: #dc2626; text-align: right; }
+    .cliente-pedidos { font-size: 0.8rem; color: #64748b; text-align: right; }
+
+    details {
+      margin-top: 10px;
+      font-size: 0.85rem;
+      background: #f8fafc;
+      padding: 8px 12px;
+      border-radius: 6px;
+    }
+
+    summary { cursor: pointer; font-weight: 600; color: #2563eb; }
+
+    .item-historico {
+      padding: 6px 0;
+      border-bottom: 1px dashed #cbd5e1;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .item-historico:last-child { border-bottom: none; }
+
+    .acoes-box {
+      margin-top: 12px;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .btn-wpp {
+      flex: 1;
+      background: #16a34a;
+      color: white;
+      text-decoration: none;
+      padding: 10px;
+      border-radius: 6px;
+      font-weight: bold;
+      font-size: 0.9rem;
+      text-align: center;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .btn-wpp:hover { background: #15803d; }
+
+    .btn-baixa {
+      background: #e2e8f0;
+      color: #1e293b;
+      border: none;
+      padding: 10px 14px;
+      border-radius: 6px;
+      font-weight: bold;
+      font-size: 0.9rem;
+      cursor: pointer;
+    }
+
+    .btn-baixa:hover { background: #cbd5e1; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h2>Controle de Fiado</h2>
+  <a href="admin.html" style="color: #2563eb; text-decoration: none; font-weight: bold;">← Painel ADM</a>
+</header>
+
+<div class="filter-box">
+  <label for="mesFiltro" style="font-weight: 600;">Mês:</label>
+  <select id="mesFiltro" onchange="filtrarPorMes()">
+    <option value="">Carregando...</option>
+  </select>
+</div>
+
+<div class="summary-card">
+  <div>
+    <span>Total a Receber no Mês</span>
+    <strong id="totalGeralMes">R$ 0,00</strong>
+  </div>
+  <div style="text-align: right;">
+    <span>Clientes em Débito</span>
+    <strong id="totalClientesMes" style="color: white;">0</strong>
+  </div>
+</div>
+
+<div id="lista-clientes">Carregando dados da planilha...</div>
+
+<script>
+  const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwQO7LrFg7vH0gtRWrKvxq2MP42DEYBSNINc_XwNEWl-UO13WCA3kWRA4h28h1QmeAH/exec";
+
+  let dadosGerais = [];
+
+  async function carregarDados() {
+    const container = document.getElementById("lista-clientes");
+    container.innerHTML = "Carregando contas em aberto...";
+
+    try {
+      const res = await fetch(`${SCRIPT_URL}?acao=RELATORIO_MENSAL`);
+      dadosGerais = await res.json();
+
+      if (dadosGerais.length === 0) {
+        container.innerHTML = "<p style='text-align:center; color:#16a34a; font-weight:bold;'>🎉 Nenhuma dívida pendente neste momento!</p>";
+        document.getElementById("totalGeralMes").textContent = "R$ 0,00";
+        document.getElementById("totalClientesMes").textContent = "0";
+        return;
+      }
+
+      popularSeletorMeses();
+      filtrarPorMes();
+    } catch (err) {
+      console.error(err);
+      container.innerHTML = "<p style='color:red;'>Erro ao carregar dados. Verifique o Apps Script.</p>";
+    }
+  }
+
+  function popularSeletorMeses() {
+    const select = document.getElementById("mesFiltro");
+    select.innerHTML = "";
+
+    const meses = [...new Set(dadosGerais.map(d => d.mesAno))].sort().reverse();
+
+    meses.forEach(m => {
+      const [ano, mes] = m.split("-");
+      const option = document.createElement("option");
+      option.value = m;
+      option.textContent = `${mes}/${ano}`;
+      select.appendChild(option);
+    });
+  }
+
+  function filtrarPorMes() {
+    const mesSelecionado = document.getElementById("mesFiltro").value;
+    const container = document.getElementById("lista-clientes");
+    container.innerHTML = "";
+
+    const filtrados = dadosGerais.filter(d => d.mesAno === mesSelecionado);
+    let somaMes = 0;
+
+    if (filtrados.length === 0) {
+      container.innerHTML = "<p style='text-align:center;'>Nenhum débito pendente neste mês.</p>";
+      document.getElementById("totalGeralMes").textContent = "R$ 0,00";
+      document.getElementById("totalClientesMes").textContent = "0";
+      return;
+    }
+
+    filtrados.forEach(c => {
+      somaMes += c.totalConsumido;
+
+      // Formatação do número para WhatsApp internacional (55 + DDD + NUMERO)
+      let numLimpo = c.telefone.replace(/\D/g, "");
+      if (numLimpo.length === 10 || numLimpo.length === 11) {
+        numLimpo = "55" + numLimpo;
+      }
+
+      const [ano, mes] = c.mesAno.split("-");
+
+      // Mensagem formatada e amigável para envio imediato
+      const mensagemTexto = `Olá, ${c.cliente}! Tudo bem?\n\nPassando para lembrar do seu consumo do mês de *${mes}/${ano}*:\n` +
+        `💰 *Total a pagar: R$ ${c.totalConsumido.toFixed(2)}*\n` +
+        `📦 Total de compras: ${c.qtdPedidos}\n\n` +
+        `Quando puder realizar o acerto ou enviar o comprovante via Pix, fico à disposição! Obrigado!`;
+
+      const linkWhatsApp = `https://wa.me/${numLimpo}?text=${encodeURIComponent(mensagemTexto)}`;
+
+      // Histórico de cada pedido do cliente
+      let itensHtml = "";
+      c.historicoItens.forEach(h => {
+        itensHtml += `
+            <div class="item-historico">
+              <div>
+                <strong>${h.data}</strong><br>
+                <span>${h.itens}</span>
+              </div>
+              <div style="font-weight:bold;">R$ ${h.valor.toFixed(2)}</div>
+            </div>
+          `;
+      });
+
+      container.innerHTML += `
+          <div class="cliente-card" id="card-${numLimpo}">
+            <div class="cliente-header">
+              <div>
+                <div class="cliente-nome">${c.cliente}</div>
+                <div class="cliente-tel">${c.telefone || "Sem número"}</div>
+              </div>
+              <div>
+                <div class="cliente-total">R$ ${c.totalConsumido.toFixed(2)}</div>
+                <div class="cliente-pedidos">${c.qtdPedidos} pedido(s)</div>
+              </div>
+            </div>
+
+            <details>
+              <summary>Ver itens consumidos</summary>
+              <div style="margin-top: 8px;">
+                ${itensHtml}
+              </div>
+            </details>
+
+            <div class="acoes-box">
+              <a href="${linkWhatsApp}" target="_blank" class="btn-wpp">
+                💬 Cobrar no WhatsApp
+              </a>
+              <button class="btn-baixa" onclick="darBaixa('${c.telefone}', '${c.mesAno}', '${c.cliente}')">
+                ✅ Marcar como Pago
+              </button>
+            </div>
+          </div>
+        `;
+    });
+
+    document.getElementById("totalGeralMes").textContent = `R$ ${somaMes.toFixed(2)}`;
+    document.getElementById("totalClientesMes").textContent = filtrados.length;
+  }
+
+  // Função que dá baixa na dívida e atualiza a planilha
+  async function darBaixa(telefone, mesAno, cliente) {
+    const senha = prompt(`Digite a senha de administrador para confirmar o pagamento de ${cliente}:`);
+    if (!senha) return;
+
+    if (!confirm(`Confirma que ${cliente} pagou todos os pedidos de ${mesAno}?`)) return;
+
+    const payload = {
+      tipo: "BAIXAR_DIVIDA",
+      telefone: telefone,
+      mesAno: mesAno,
+      senha: senha
+    };
+
+    try {
+      const res = await fetch(SCRIPT_URL, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify(payload)
+      });
+
+      const resposta = await res.json();
+      if (resposta.status === "sucesso") {
+        alert(`Pagamento de ${cliente} registrado com sucesso!`);
+        carregarDados(); // Recarrega os dados para remover o cliente da tela devedora
+      } else {
+        alert("Erro: " + (resposta.mensagem || "Não foi possível dar baixa."));
+      }
+    } catch (err) {
+      alert("Erro de conexão ao dar baixa.");
+    }
+  }
+
+  carregarDados();
+</script>
+</body>
+</html>

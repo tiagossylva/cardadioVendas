@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cardápio & Pedidos</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      margin: 0;
+      padding: 16px;
+      background: #f8fafc;
+      color: #1e293b;
+      padding-bottom: 380px;
+    }
+
+    h2 { margin-top: 0; text-align: center; }
+
+    .card {
+      background: #ffffff;
+      padding: 12px 14px;
+      margin-bottom: 12px;
+      border-radius: 10px;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .card img {
+      width: 65px;
+      height: 65px;
+      object-fit: cover;
+      border-radius: 8px;
+      background: #e2e8f0;
+    }
+
+    .card-info { flex: 1; }
+    .card-info strong { display: block; font-size: 1.05rem; }
+    .card-info span { color: #16a34a; font-weight: bold; }
+
+    /* Controles de quantidade (+ e -) */
+    .controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn-qty {
+      background: #16a34a;
+      color: white;
+      border: none;
+      width: 34px;
+      height: 34px;
+      font-size: 1.2rem;
+      border-radius: 8px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      user-select: none;
+    }
+
+    .btn-qty.btn-minus {
+      background: #e2e8f0;
+      color: #334155;
+    }
+
+    .btn-qty:disabled {
+      opacity: 0.35;
+      cursor: not-allowed;
+    }
+
+    .qty-display {
+      font-weight: bold;
+      min-width: 22px;
+      text-align: center;
+      font-size: 1rem;
+    }
+
+    /* Carrinho fixo */
+    .cart-box {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: #ffffff;
+      padding: 16px 20px;
+      border-radius: 16px 16px 0 0;
+      box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.12);
+      max-width: 500px;
+      margin: 0 auto;
+      max-height: 85vh;
+      overflow-y: auto;
+    }
+
+    .cart-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 6px;
+    }
+
+    .cart-header h3 { margin: 0; font-size: 1.1rem; }
+
+    .btn-clear {
+      background: transparent;
+      border: 1px solid #ef4444;
+      color: #ef4444;
+      padding: 4px 8px;
+      font-size: 0.75rem;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    .btn-clear:disabled {
+      border-color: #cbd5e1;
+      color: #94a3b8;
+      cursor: not-allowed;
+    }
+
+    .cart-box p { margin: 0 0 10px; font-size: 1.05rem; }
+
+    label { font-size: 0.85rem; font-weight: 600; color: #475569; display: block; margin-top: 6px; }
+
+    input, textarea {
+      width: 100%;
+      padding: 9px;
+      margin-top: 3px;
+      margin-bottom: 4px;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      font-size: 0.95rem;
+      font-family: inherit;
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 50px;
+    }
+
+    input:focus, textarea:focus {
+      outline: none;
+      border-color: #16a34a;
+    }
+
+    .btn-submit {
+      width: 100%;
+      background: #16a34a;
+      color: white;
+      border: none;
+      padding: 12px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 1rem;
+      font-weight: bold;
+      margin-top: 8px;
+    }
+
+    .btn-submit:disabled { background: #94a3b8; cursor: not-allowed; }
+  </style>
+</head>
+<body>
+
+<h2>Cardápio</h2>
+<div id="produtos">Carregando cardápio...</div>
+
+<!-- Painel do Carrinho -->
+<div class="cart-box">
+  <div class="cart-header">
+    <h3>Seu Pedido (<span id="total-itens">0</span> itens)</h3>
+    <button id="btn-zerar" class="btn-clear" onclick="zerarCarrinho()" disabled>Zerar Carrinho</button>
+  </div>
+
+  <p>Total: <strong>R$ <span id="valor-total">0.00</span></strong></p>
+
+  <label for="nome-cliente">Seu Nome:</label>
+  <input type="text" id="nome-cliente" placeholder="Ex: João Silva">
+
+  <label for="telefone">WhatsApp / Telefone:</label>
+  <input type="tel" id="telefone" placeholder="(00) 00000-0000" maxlength="15">
+
+  <label for="observacoes">Observações (opcional):</label>
+  <textarea id="observacoes" placeholder="Ex: Sem cebola, carne bem passada..."></textarea>
+
+  <button id="btn-enviar" class="btn-submit" onclick="finalizarPedido()">Confirmar Pedido</button>
+</div>
+
+<script>
+  // Cole aqui a URL de implantação do Apps Script
+  const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwQO7LrFg7vH0gtRWrKvxq2MP42DEYBSNINc_XwNEWl-UO13WCA3kWRA4h28h1QmeAH/exec";
+
+  let catalogo = [];
+  let carrinho = {};
+
+  // 1. Busca produtos direto da aba "Produtos" da planilha
+  async function carregarCardapio() {
+    const container = document.getElementById("produtos");
+    container.innerHTML = "<p style='text-align:center;'>Carregando produtos...</p>";
+
+    try {
+      const res = await fetch(SCRIPT_URL);
+      const dados = await res.json();
+      catalogo = dados.filter(p => p.ativo);
+      renderizarProdutos();
+    } catch (err) {
+      container.innerHTML = "<p style='color:red; text-align:center;'>Erro ao carregar cardápio. Verifique a URL do script.</p>";
+    }
+  }
+
+  // 2. Renderiza produtos na tela
+  function renderizarProdutos() {
+    const container = document.getElementById("produtos");
+    container.innerHTML = "";
+
+    if (catalogo.length === 0) {
+      container.innerHTML = "<p style='text-align:center;'>Nenhum item disponível no momento.</p>";
+      return;
+    }
+
+    catalogo.forEach(prod => {
+      const qtd = carrinho[prod.id] || 0;
+      const imgTag = prod.imagem
+        ? `<img src="${prod.imagem}" alt="${prod.nome}">`
+        : `<img src="https://via.placeholder.com/65?text=Foto" alt="Sem foto">`;
+
+      container.innerHTML += `
+          <div class="card">
+            ${imgTag}
+            <div class="card-info">
+              <strong>${prod.nome}</strong>
+              <span>R$ ${prod.preco.toFixed(2)}</span>
+            </div>
+            <div class="controls">
+              <button class="btn-qty btn-minus"
+                      onclick="diminuir('${prod.id}')"
+                      ${qtd === 0 ? "disabled" : ""}>-</button>
+              <span class="qty-display">${qtd}</span>
+              <button class="btn-qty" onclick="adicionar('${prod.id}')">+</button>
+            </div>
+          </div>
+        `;
+    });
+  }
+
+  // 3. Gestão do Carrinho
+  function adicionar(id) {
+    carrinho[id] = (carrinho[id] || 0) + 1;
+    atualizarEstado();
+  }
+
+  function diminuir(id) {
+    if (!carrinho[id]) return;
+    carrinho[id] -= 1;
+    if (carrinho[id] === 0) {
+      delete carrinho[id];
+    }
+    atualizarEstado();
+  }
+
+  function zerarCarrinho() {
+    if (Object.keys(carrinho).length === 0) return;
+    if (confirm("Deseja realmente esvaziar o carrinho?")) {
+      carrinho = {};
+      atualizarEstado();
+    }
+  }
+
+  function atualizarEstado() {
+    renderizarProdutos();
+    atualizarResumo();
+  }
+
+  function atualizarResumo() {
+    let total = 0;
+    let qtd = 0;
+    for (const [id, count] of Object.entries(carrinho)) {
+      const prod = catalogo.find(p => String(p.id) === String(id));
+      if (prod) {
+        total += prod.preco * count;
+        qtd += count;
+      }
+    }
+
+    document.getElementById("total-itens").innerText = qtd;
+    document.getElementById("valor-total").innerText = total.toFixed(2);
+    document.getElementById("btn-zerar").disabled = (qtd === 0);
+  }
+
+  // 4. Máscara de telefone/WhatsApp
+  const inputTelefone = document.getElementById("telefone");
+  inputTelefone.addEventListener("input", function(e) {
+    let v = e.target.value.replace(/\D/g, "");
+    if (v.length > 11) v = v.slice(0, 11);
+
+    if (v.length > 6) {
+      v = `(${v.slice(0, 2)}) ${v.slice(2, 7)}-${v.slice(7)}`;
+    } else if (v.length > 2) {
+      v = `(${v.slice(0, 2)}) ${v.slice(2)}`;
+    }
+    e.target.value = v;
+  });
+
+  // 5. Finalizar Pedido
+  async function finalizarPedido() {
+    const btn = document.getElementById("btn-enviar");
+    const nome = document.getElementById("nome-cliente").value.trim();
+    const telefone = document.getElementById("telefone").value.trim();
+    const observacoes = document.getElementById("observacoes").value.trim();
+
+    if (Object.keys(carrinho).length === 0) {
+      alert("Adicione pelo menos um item ao pedido!");
+      return;
+    }
+
+    if (!nome) {
+      alert("Por favor, informe seu nome.");
+      document.getElementById("nome-cliente").focus();
+      return;
+    }
+
+    if (telefone.replace(/\D/g, "").length < 10) {
+      alert("Por favor, informe um número de WhatsApp válido com DDD.");
+      document.getElementById("telefone").focus();
+      return;
+    }
+
+    let itensDescricao = [];
+    let total = 0;
+    for (const [id, count] of Object.entries(carrinho)) {
+      const prod = catalogo.find(p => String(p.id) === String(id));
+      if (prod) {
+        itensDescricao.push(`${count}x ${prod.nome}`);
+        total += prod.preco * count;
+      }
+    }
+
+    btn.disabled = true;
+    btn.innerText = "Gravando pedido...";
+
+    const payload = {
+      cliente: nome,
+      telefone: telefone,
+      itens: itensDescricao.join(", "),
+      observacoes: observacoes || "Nenhuma",
+      total: total.toFixed(2)
+    };
+
+    try {
+      await fetch(SCRIPT_URL, {
+        method: "POST",
+        mode: "no-cors",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+
+      alert("Pedido realizado com sucesso!");
+
+      carrinho = {};
+      atualizarEstado();
+      document.getElementById("nome-cliente").value = "";
+      document.getElementById("telefone").value = "";
+      document.getElementById("observacoes").value = "";
+    } catch (err) {
+      alert("Erro ao enviar o pedido. Tente novamente.");
+      console.error(err);
+    } finally {
+      btn.disabled = false;
+      btn.innerText = "Confirmar Pedido";
+    }
+  }
+
+  carregarCardapio();
+</script>
+</body>
+</html>

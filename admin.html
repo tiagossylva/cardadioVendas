@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Painel Administrativo - Cardápio</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: system-ui, sans-serif;
+      margin: 0;
+      padding: 16px;
+      background: #f1f5f9;
+      color: #1e293b;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+    .card {
+      background: white;
+      padding: 16px;
+      border-radius: 8px;
+      margin-bottom: 16px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    h2, h3 { margin-top: 0; }
+    label { display: block; font-weight: 600; margin-top: 10px; font-size: 0.85rem; }
+    input { width: 100%; padding: 10px; margin-top: 4px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.95rem; }
+
+    .btn-primary {
+      width: 100%;
+      background: #2563eb;
+      color: white;
+      border: none;
+      padding: 12px;
+      border-radius: 6px;
+      font-weight: bold;
+      cursor: pointer;
+      margin-top: 14px;
+    }
+    .btn-primary:disabled { background: #94a3b8; }
+
+    /* Lista de produtos */
+    .item-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 0;
+      border-bottom: 1px solid #e2e8f0;
+    }
+    .item-row img {
+      width: 55px;
+      height: 55px;
+      border-radius: 6px;
+      object-fit: cover;
+      background: #e2e8f0;
+    }
+    .item-detalhes { flex: 1; }
+
+    .btn-delete {
+      background: #fee2e2;
+      color: #ef4444;
+      border: 1px solid #fecaca;
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-weight: 600;
+      cursor: pointer;
+      font-size: 0.85rem;
+    }
+    .btn-delete:hover {
+      background: #ef4444;
+      color: white;
+    }
+  </style>
+</head>
+<body>
+
+<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px;">
+  <h2>Gerenciador de Cardápio</h2>
+  <a href="fiado.html" style="background:#0f172a; color:white; padding:8px 12px; border-radius:6px; text-decoration:none; font-weight:bold; font-size:0.85rem;">📋 Ver Fiado / Relatórios</a>
+</div>
+
+<h2>Gerenciador de Cardápio</h2>
+
+<!-- Formulário de Cadastro -->
+<div class="card">
+  <h3>Adicionar Novo Produto</h3>
+
+  <label>Nome do Produto:</label>
+  <input type="text" id="nome" placeholder="Ex: Hambúrguer Especial">
+
+  <label>Preço (R$):</label>
+  <input type="number" step="0.01" id="preco" placeholder="Ex: 25.00">
+
+  <label>URL da Imagem:</label>
+  <input type="url" id="imagem" placeholder="https://exemplo.com/foto.jpg">
+
+  <label>Senha de Administrador:</label>
+  <input type="password" id="senha" placeholder="Digite sua senha">
+
+  <button id="btn-salvar" class="btn-primary" onclick="salvarProduto()">Cadastrar Produto</button>
+</div>
+
+<!-- Lista de Produtos Cadastrados -->
+<div class="card">
+  <div style="display:flex; justify-content:space-between; align-items:center;">
+    <h3 style="margin:0;">Produtos no Cardápio</h3>
+    <button onclick="carregarProdutos()" style="background:none; border:none; color:#2563eb; cursor:pointer; font-weight:bold;">Atualizar 🔄</button>
+  </div>
+  <div id="lista-produtos" style="margin-top: 12px;">Carregando...</div>
+</div>
+
+<script>
+  // Cole a URL da implantação do Apps Script
+  const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwQO7LrFg7vH0gtRWrKvxq2MP42DEYBSNINc_XwNEWl-UO13WCA3kWRA4h28h1QmeAH/exec";
+
+  async function carregarProdutos() {
+    const container = document.getElementById("lista-produtos");
+    container.innerHTML = "Carregando...";
+
+    try {
+      const res = await fetch(SCRIPT_URL);
+      const produtos = await res.json();
+
+      if (produtos.length === 0) {
+        container.innerHTML = "<p>Nenhum produto cadastrado na planilha.</p>";
+        return;
+      }
+
+      container.innerHTML = "";
+      produtos.forEach(p => {
+        container.innerHTML += `
+            <div class="item-row" id="prod-${p.id}">
+              <img src="${p.imagem || 'https://via.placeholder.com/55?text=Foto'}" alt="${p.nome}">
+              <div class="item-detalhes">
+                <strong>${p.nome}</strong><br>
+                <span style="color:#16a34a; font-weight:bold;">R$ ${p.preco.toFixed(2)}</span>
+              </div>
+              <button class="btn-delete" onclick="excluirProduto('${p.id}', '${p.nome}')">Excluir</button>
+            </div>
+          `;
+      });
+    } catch (e) {
+      container.innerHTML = "<p style='color:red;'>Erro ao buscar produtos da planilha.</p>";
+    }
+  }
+
+  async function salvarProduto() {
+    const nome = document.getElementById("nome").value.trim();
+    const preco = document.getElementById("preco").value.trim();
+    const imagem = document.getElementById("imagem").value.trim();
+    const senha = document.getElementById("senha").value.trim();
+    const btn = document.getElementById("btn-salvar");
+
+    if (!nome || !preco || !senha) {
+      alert("Preencha nome, preço e senha!");
+      return;
+    }
+
+    btn.disabled = true;
+    btn.innerText = "Salvando na planilha...";
+
+    const payload = {
+      tipo: "NOVO_PRODUTO",
+      nome: nome,
+      preco: preco,
+      imagem: imagem,
+      senha: senha
+    };
+
+    try {
+      await fetch(SCRIPT_URL, {
+        method: "POST",
+        mode: "no-cors",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+
+      alert("Produto cadastrado com sucesso!");
+      document.getElementById("nome").value = "";
+      document.getElementById("preco").value = "";
+      document.getElementById("imagem").value = "";
+
+      setTimeout(carregarProdutos, 2000);
+    } catch (err) {
+      alert("Erro ao cadastrar.");
+    } finally {
+      btn.disabled = false;
+      btn.innerText = "Cadastrar Produto";
+    }
+  }
+
+  async function excluirProduto(id, nome) {
+    let senha = document.getElementById("senha").value.trim();
+
+    if (!senha) {
+      senha = prompt(`Digite a senha de ADM para confirmar a exclusão de "${nome}":`);
+      if (!senha) return;
+      document.getElementById("senha").value = senha;
+    }
+
+    if (!confirm(`Tem certeza que deseja apagar "${nome}" do cardápio?`)) {
+      return;
+    }
+
+    const itemDiv = document.getElementById(`prod-${id}`);
+    if (itemDiv) itemDiv.style.opacity = "0.3";
+
+    const payload = {
+      tipo: "EXCLUIR_PRODUTO",
+      id: id,
+      senha: senha
+    };
+
+    try {
+      await fetch(SCRIPT_URL, {
+        method: "POST",
+        mode: "no-cors",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+
+      alert(`"${nome}" removido!`);
+      setTimeout(carregarProdutos, 2000);
+    } catch (err) {
+      alert("Erro ao tentar excluir.");
+      if (itemDiv) itemDiv.style.opacity = "1";
+    }
+  }
+
+  carregarProdutos();
+</script>
+</body>
+</html>
