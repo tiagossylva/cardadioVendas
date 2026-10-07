@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login - Painel Administrativo</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      margin: 0;
+      background: #0f172a;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      padding: 16px;
+    }
+    .login-card {
+      background: white;
+      padding: 30px 24px;
+      border-radius: 12px;
+      width: 100%;
+      max-width: 380px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+    }
+    h2 { margin-top: 0; text-align: center; color: #1e293b; }
+    label { font-size: 0.85rem; font-weight: 600; color: #475569; display: block; margin-top: 12px; }
+    input {
+      width: 100%;
+      padding: 12px;
+      margin-top: 4px;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      font-size: 1rem;
+    }
+    button {
+      width: 100%;
+      background: #2563eb;
+      color: white;
+      border: none;
+      padding: 12px;
+      border-radius: 6px;
+      font-size: 1rem;
+      font-weight: bold;
+      cursor: pointer;
+      margin-top: 20px;
+    }
+    button:disabled { background: #94a3b8; }
+  </style>
+</head>
+<body>
+
+<div class="login-card">
+  <h2>Acesso Administrativo</h2>
+
+  <label>Usuário:</label>
+  <input type="text" id="usuario" placeholder="admin">
+
+  <label>Senha:</label>
+  <input type="password" id="senha" placeholder="••••••">
+
+  <button id="btn-login" onclick="fazerLogin()">Entrar no Painel</button>
+</div>
+
+<script>
+  // Cole sua URL do Apps Script terminada em /exec
+  const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzNhIvy7kSNjuzYUQd1ctp9mpvZVjfEYpRcmRBr25whjsbLhjNqqMpeiwT1o3gza8cUHw/exec";
+
+  async function fazerLogin() {
+    const usuario = document.getElementById("usuario").value.trim();
+    const senha = document.getElementById("senha").value.trim();
+    const btn = document.getElementById("btn-login");
+
+    if (!usuario || !senha) {
+      alert("Preencha o usuário e a senha.");
+      return;
+    }
+
+    btn.disabled = true;
+    btn.innerText = "Autenticando...";
+
+    try {
+      const res = await fetch(SCRIPT_URL, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify({ tipo: "LOGIN", usuario, senha })
+      });
+
+      const data = await res.json();
+      if (data.status === "sucesso") {
+        // Salva autenticação na sessão
+        sessionStorage.setItem("adm_autenticado", "true");
+        sessionStorage.setItem("adm_senha", senha);
+        window.location.href = "admin.html";
+      } else {
+        alert(data.mensagem || "Credenciais inválidas.");
+      }
+    } catch (err) {
+      alert("Erro de conexão ao autenticar.");
+    } finally {
+      btn.disabled = false;
+      btn.innerText = "Entrar no Painel";
+    }
+  }
+</script>
+</body>
+</html>

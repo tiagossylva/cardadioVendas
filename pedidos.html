@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gestão de Pedidos</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      margin: 0;
+      padding: 16px;
+      background: #f8fafc;
+      color: #1e293b;
+      max-width: 800px;
+      margin: 0 auto;
+    }
+
+    /* Menu Superior */
+    nav { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
+    nav a { text-decoration: none; padding: 8px 14px; border-radius: 6px; font-weight: bold; font-size: 0.9rem; background: #e2e8f0; color: #334155; }
+    nav a.active { background: #2563eb; color: white; }
+
+    /* Card do Pedido */
+    .pedido-card {
+      background: white;
+      padding: 16px;
+      border-radius: 8px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      margin-bottom: 12px;
+      position: relative;
+    }
+
+    .pedido-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 6px;
+    }
+
+    /* Badge no canto superior direito */
+    .status-badge {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      font-weight: bold;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .status-Pendente { background: #fef08a; color: #854d0e; }
+    .status-Pago { background: #bbf7d0; color: #166534; }
+    .status-Cancelado { background: #fecaca; color: #991b1b; }
+
+    .btn-edit {
+      background: #2563eb;
+      color: white;
+      border: none;
+      padding: 6px 14px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: bold;
+      font-size: 0.9rem;
+    }
+    .btn-edit:hover { background: #1d4ed8; }
+
+    /* Modal de Edição */
+    .modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.5);
+      justify-content: center;
+      align-items: center;
+      padding: 16px;
+      z-index: 100;
+    }
+    .modal-content {
+      background: white;
+      padding: 22px;
+      border-radius: 10px;
+      width: 100%;
+      max-width: 480px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+    }
+    label { display: block; font-weight: 600; font-size: 0.85rem; margin-top: 10px; color: #475569; }
+    input, textarea {
+      width: 100%;
+      padding: 9px;
+      margin-top: 4px;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      font-size: 0.95rem;
+      font-family: inherit;
+    }
+  </style>
+</head>
+<body>
+
+<script>
+  // Validação de acesso obrigatório via Login
+  if (!sessionStorage.getItem("adm_autenticado")) {
+    window.location.href = "login.html";
+  }
+</script>
+
+<!-- Navegação -->
+<nav>
+  <a href="admin.html">🍔 Cardápio</a>
+  <a href="pedidos.html" class="active">📦 Pedidos</a>
+  <a href="relatorios.html">📊 Relatórios Financeiros</a>
+  <a href="#" onclick="logout()" style="margin-left: auto; background: #ef4444; color: white;">Sair</a>
+</nav>
+
+<h2>Gerenciamento de Pedidos</h2>
+<div id="lista-pedidos">Carregando pedidos...</div>
+
+<!-- Modal de Edição (Sem o campo de Status de Pagamento) -->
+<div id="modal-edit" class="modal">
+  <div class="modal-content">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px;">
+      <h3 style="margin:0;">Editar Pedido</h3>
+      <span id="modal-status-preview" class="status-badge"></span>
+    </div>
+
+    <input type="hidden" id="edit-id">
+    <input type="hidden" id="edit-status-original">
+
+    <label>Nome do Cliente:</label>
+    <input type="text" id="edit-cliente">
+
+    <label>Telefone / WhatsApp:</label>
+    <input type="text" id="edit-telefone">
+
+    <label>Itens do Pedido:</label>
+    <textarea id="edit-itens" rows="3"></textarea>
+
+    <label>Observações:</label>
+    <input type="text" id="edit-obs">
+
+    <label>Valor Total (R$):</label>
+    <input type="number" step="0.01" id="edit-total">
+
+    <div style="display:flex; gap:10px; margin-top:20px;">
+      <button class="btn-edit" style="flex:1;" onclick="salvarEdicao()">Salvar Alterações</button>
+      <button onclick="fecharModal()" style="background:#cbd5e1; border:none; padding:10px 16px; border-radius:6px; cursor:pointer; font-weight:bold;">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzNhIvy7kSNjuzYUQd1ctp9mpvZVjfEYpRcmRBr25whjsbLhjNqqMpeiwT1o3gza8cUHw/exec";
+  let pedidosCache = [];
+
+  async function carregarPedidos() {
+    const container = document.getElementById("lista-pedidos");
+    try {
+      const res = await fetch(`${SCRIPT_URL}?acao=LISTAR_PEDIDOS`);
+      pedidosCache = await res.json();
+
+      if (pedidosCache.length === 0) {
+        container.innerHTML = "<p>Nenhum pedido encontrado na planilha.</p>";
+        return;
+      }
+
+      container.innerHTML = "";
+
+      // Exibe os mais recentes no topo
+      pedidosCache.slice().reverse().forEach(p => {
+        container.innerHTML += `
+            <div class="pedido-card">
+              <!-- Topo do card com Status no canto superior direito -->
+              <div class="pedido-header">
+                <div>
+                  <strong style="font-size:1.1rem;">${p.cliente}</strong><br>
+                  <small style="color:#64748b;">${p.dataHora} | Tel: ${p.telefone || "Não informado"}</small>
+                </div>
+                <span class="status-badge status-${p.status}">${p.status}</span>
+              </div>
+
+              <div style="margin: 10px 0; font-size: 0.95rem;">
+                <strong>Itens:</strong> ${p.itens}
+              </div>
+
+              ${p.observacoes && p.observacoes !== "Nenhuma" ? `
+                <div style="font-size:0.85rem; color:#d97706; margin-bottom:8px;">
+                  <strong>Obs:</strong> ${p.observacoes}
+                </div>
+              ` : ''}
+
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-top:12px; border-top:1px solid #f1f5f9; padding-top:10px;">
+                <span style="font-size:1.15rem; font-weight:bold; color:#16a34a;">R$ ${p.total.toFixed(2)}</span>
+                <button class="btn-edit" onclick="abrirModalEdicao('${p.id}')">✏️ Editar Dados</button>
+              </div>
+            </div>
+          `;
+      });
+    } catch (err) {
+      container.innerHTML = "<p style='color:red;'>Erro ao carregar lista de pedidos.</p>";
+    }
+  }
+
+  function abrirModalEdicao(id) {
+    const p = pedidosCache.find(item => String(item.id) === String(id));
+    if (!p) return;
+
+    document.getElementById("edit-id").value = p.id;
+    document.getElementById("edit-status-original").value = p.status; // Mantém o status original intacto
+    document.getElementById("edit-cliente").value = p.cliente;
+    document.getElementById("edit-telefone").value = p.telefone;
+    document.getElementById("edit-itens").value = p.itens;
+    document.getElementById("edit-obs").value = p.observacoes;
+    document.getElementById("edit-total").value = p.total;
+
+    // Exibe apenas a etiqueta visual do status atual no modal, sem permitir troca
+    const previewBadge = document.getElementById("modal-status-preview");
+    previewBadge.className = `status-badge status-${p.status}`;
+    previewBadge.innerText = p.status;
+
+    document.getElementById("modal-edit").style.display = "flex";
+  }
+
+  function fecharModal() {
+    document.getElementById("modal-edit").style.display = "none";
+  }
+
+  async function salvarEdicao() {
+    const payload = {
+      tipo: "EDITAR_PEDIDO",
+      senha: sessionStorage.getItem("adm_senha"),
+      id: document.getElementById("edit-id").value,
+      cliente: document.getElementById("edit-cliente").value,
+      telefone: document.getElementById("edit-telefone").value,
+      itens: document.getElementById("edit-itens").value,
+      observacoes: document.getElementById("edit-obs").value,
+      total: document.getElementById("edit-total").value,
+      status: document.getElementById("edit-status-original").value // Envia de volta o status original sem alteração
+    };
+
+    try {
+      const res = await fetch(SCRIPT_URL, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify(payload)
+      });
+      const resp = await res.json();
+      if (resp.status === "sucesso") {
+        alert("Pedido atualizado com sucesso!");
+        fecharModal();
+        carregarPedidos();
+      } else {
+        alert("Erro ao salvar: " + resp.mensagem);
+      }
+    } catch (e) {
+      alert("Erro de comunicação ao salvar edição.");
+    }
+  }
+
+  function logout() {
+    sessionStorage.clear();
+    window.location.href = "login.html";
+  }
+
+  carregarPedidos();
+</script>
+</body>
+</html>

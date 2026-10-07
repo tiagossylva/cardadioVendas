@@ -71,13 +71,21 @@
       color: white;
     }
   </style>
+
+  <script>
+    // Se não estiver logado, redireciona para a página de login
+    if (!sessionStorage.getItem("adm_autenticado")) {
+      window.location.href = "login.html";
+    }
+  </script>
 </head>
 <body>
-
-<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px;">
-  <h2>Gerenciador de Cardápio</h2>
-  <a href="fiado.html" style="background:#0f172a; color:white; padding:8px 12px; border-radius:6px; text-decoration:none; font-weight:bold; font-size:0.85rem;">📋 Ver Fiado / Relatórios</a>
-</div>
+<nav style="display:flex; gap:10px; margin-bottom:16px; flex-wrap:wrap;">
+  <a href="admin.html" style="background:#2563eb; color:white; padding:8px 14px; border-radius:6px; text-decoration:none; font-weight:bold;">🍔 Cardápio</a>
+  <a href="pedidos.html" style="background:#e2e8f0; color:#334155; padding:8px 14px; border-radius:6px; text-decoration:none; font-weight:bold;">📦 Pedidos</a>
+  <a href="relatorios.html" style="background:#e2e8f0; color:#334155; padding:8px 14px; border-radius:6px; text-decoration:none; font-weight:bold;">📊 Relatórios</a>
+  <a href="#" onclick="sessionStorage.clear(); window.location.href='login.html';" style="margin-left:auto; background:#ef4444; color:white; padding:8px 14px; border-radius:6px; text-decoration:none; font-weight:bold;">Sair</a>
+</nav>
 
 <h2>Gerenciador de Cardápio</h2>
 
@@ -111,7 +119,7 @@
 
 <script>
   // Cole a URL da implantação do Apps Script
-  const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwQO7LrFg7vH0gtRWrKvxq2MP42DEYBSNINc_XwNEWl-UO13WCA3kWRA4h28h1QmeAH/exec";
+  const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzNhIvy7kSNjuzYUQd1ctp9mpvZVjfEYpRcmRBr25whjsbLhjNqqMpeiwT1o3gza8cUHw/exec";
 
   async function carregarProdutos() {
     const container = document.getElementById("lista-produtos");

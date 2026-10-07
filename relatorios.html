@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Relatórios Financeiros & Fiado</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      margin: 0;
+      padding: 16px;
+      background: #f1f5f9;
+      color: #1e293b;
+      max-width: 750px;
+      margin: 0 auto;
+    }
+
+    nav { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
+    nav a { text-decoration: none; padding: 8px 14px; border-radius: 6px; font-weight: bold; font-size: 0.9rem; background: #e2e8f0; color: #334155; }
+    nav a.active { background: #2563eb; color: white; }
+
+    /* Indicadores Topo */
+    .kpis {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    .kpi-card {
+      background: white;
+      padding: 16px;
+      border-radius: 8px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      text-align: center;
+    }
+    .kpi-card span { font-size: 0.85rem; color: #64748b; font-weight: 600; }
+    .kpi-card strong { display: block; font-size: 1.4rem; margin-top: 4px; }
+
+    /* Painel de Filtros */
+    .filtros {
+      background: white;
+      padding: 14px;
+      border-radius: 8px;
+      margin-bottom: 16px;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    .filtros select, .filtros input {
+      flex: 1;
+      min-width: 140px;
+      padding: 9px;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      font-size: 0.95rem;
+      background: white;
+    }
+
+    /* Card do Cliente Agrupado */
+    .cliente-card {
+      background: white;
+      padding: 18px;
+      border-radius: 8px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      margin-bottom: 14px;
+    }
+
+    .cliente-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      border-bottom: 1px solid #f1f5f9;
+      padding-bottom: 10px;
+      margin-bottom: 10px;
+    }
+
+    .cliente-nome { font-size: 1.15rem; font-weight: bold; }
+    .cliente-tel { font-size: 0.85rem; color: #64748b; }
+    .cliente-total { font-size: 1.3rem; font-weight: bold; text-align: right; }
+    .cliente-pedidos { font-size: 0.8rem; color: #64748b; text-align: right; }
+
+    /* Histórico de Compras */
+    details {
+      margin-top: 10px;
+      font-size: 0.9rem;
+      background: #f8fafc;
+      padding: 10px 12px;
+      border-radius: 6px;
+    }
+    summary { cursor: pointer; font-weight: 600; color: #2563eb; }
+
+    .item-historico {
+      padding: 8px 0;
+      border-bottom: 1px dashed #cbd5e1;
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      align-items: center;
+    }
+    .item-historico:last-child { border-bottom: none; }
+
+    .badge {
+      display: inline-block;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 0.7rem;
+      font-weight: bold;
+    }
+    .badge-Pendente { background: #fef08a; color: #854d0e; }
+    .badge-Pago { background: #bbf7d0; color: #166534; }
+    .badge-Cancelado { background: #fecaca; color: #991b1b; }
+
+    /* Botões de Ação */
+    .acoes-box {
+      margin-top: 14px;
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .btn-wpp {
+      flex: 1.2;
+      background: #16a34a;
+      color: white;
+      text-decoration: none;
+      padding: 10px;
+      border-radius: 6px;
+      font-weight: bold;
+      font-size: 0.9rem;
+      text-align: center;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 6px;
+    }
+    .btn-wpp:hover { background: #15803d; }
+
+    .btn-acao {
+      border: none;
+      padding: 10px 12px;
+      border-radius: 6px;
+      font-weight: bold;
+      font-size: 0.85rem;
+      cursor: pointer;
+    }
+    .btn-pagar { background: #e0f2fe; color: #0369a1; }
+    .btn-pagar:hover { background: #bae6fd; }
+    .btn-cancelar { background: #fee2e2; color: #b91c1c; }
+    .btn-cancelar:hover { background: #fecaca; }
+  </style>
+</head>
+<body>
+
+<script>
+  if (!sessionStorage.getItem("adm_autenticado")) {
+    window.location.href = "login.html";
+  }
+</script>
+
+<nav>
+  <a href="admin.html">🍔 Cardápio</a>
+  <a href="pedidos.html">📦 Pedidos</a>
+  <a href="relatorios.html" class="active">📊 Relatórios Financeiros</a>
+  <a href="#" onclick="sessionStorage.clear(); window.location.href='login.html';" style="margin-left: auto; background: #ef4444; color: white;">Sair</a>
+</nav>
+
+<h2>Relatório Financeiro & Fiado</h2>
+
+<!-- Indicadores Topo -->
+<div class="kpis">
+  <div class="kpi-card">
+    <span>Total Selecionado</span>
+    <strong id="kpi-total" style="color: #2563eb;">R$ 0,00</strong>
+  </div>
+  <div class="kpi-card">
+    <span>Em Aberto (Fiado)</span>
+    <strong id="kpi-aberto" style="color: #dc2626;">R$ 0,00</strong>
+  </div>
+  <div class="kpi-card">
+    <span>Total Já Pago</span>
+    <strong id="kpi-pago" style="color: #16a34a;">R$ 0,00</strong>
+  </div>
+</div>
+
+<!-- Filtros -->
+<div class="filtros">
+  <select id="filtro-status" onchange="processarDados()">
+    <option value="TODOS">Todos os Status</option>
+    <option value="Pendente" selected>Em Aberto (Pendentes)</option>
+    <option value="Pago">Pagos</option>
+  </select>
+
+  <input type="text" id="filtro-busca" placeholder="Buscar por cliente ou telefone..." oninput="processarDados()">
+</div>
+
+<div id="lista-clientes">Carregando dados...</div>
+
+<script>
+  // Cole sua URL do Apps Script terminada em /exec
+  const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzNhIvy7kSNjuzYUQd1ctp9mpvZVjfEYpRcmRBr25whjsbLhjNqqMpeiwT1o3gza8cUHw/exec";
+  let todosPedidos = [];
+
+  async function carregarRelatorio() {
+    const container = document.getElementById("lista-clientes");
+    container.innerHTML = "<p style='text-align:center;'>Carregando dados da planilha...</p>";
+
+    try {
+      const res = await fetch(`${SCRIPT_URL}?acao=LISTAR_PEDIDOS`);
+      todosPedidos = await res.json();
+      processarDados();
+    } catch (err) {
+      container.innerHTML = "<p style='color:red; text-align:center;'>Erro ao carregar dados da planilha.</p>";
+    }
+  }
+
+  function processarDados() {
+    const statusFiltro = document.getElementById("filtro-status").value;
+    const busca = document.getElementById("filtro-busca").value.toLowerCase().trim();
+    const container = document.getElementById("lista-clientes");
+    container.innerHTML = "";
+
+    let somaGeralAberto = 0;
+    let somaGeralPago = 0;
+    let somaSelecionado = 0;
+
+    // Atualiza KPIs globais da base inteira
+    todosPedidos.forEach(p => {
+      if (p.status === "Pendente") somaGeralAberto += p.total;
+      if (p.status === "Pago") somaGeralPago += p.total;
+    });
+
+    // 1. Agrupa os pedidos por cliente (usando telefone ou nome como chave)
+    const agrupado = {};
+
+    todosPedidos.forEach(p => {
+      const matchStatus = (statusFiltro === "TODOS" || p.status === statusFiltro);
+      const matchBusca = p.cliente.toLowerCase().includes(busca) || p.telefone.includes(busca);
+
+      if (matchStatus && matchBusca) {
+        somaSelecionado += p.total;
+
+        const chave = p.telefone ? p.telefone.replace(/\D/g, "") : p.cliente.toLowerCase().trim();
+
+        if (!agrupado[chave]) {
+          agrupado[chave] = {
+            cliente: p.cliente,
+            telefone: p.telefone,
+            total: 0,
+            totalPendente: 0,
+            compras: []
+          };
+        }
+
+        agrupado[chave].total += p.total;
+        if (p.status === "Pendente") {
+          agrupado[chave].totalPendente += p.total;
+        }
+
+        agrupado[chave].compras.push(p);
+      }
+    });
+
+    document.getElementById("kpi-total").innerText = `R$ ${somaSelecionado.toFixed(2)}`;
+    document.getElementById("kpi-aberto").innerText = `R$ ${somaGeralAberto.toFixed(2)}`;
+    document.getElementById("kpi-pago").innerText = `R$ ${somaGeralPago.toFixed(2)}`;
+
+    const chaves = Object.keys(agrupado);
+    if (chaves.length === 0) {
+      container.innerHTML = "<p style='text-align:center; color:#64748b;'>Nenhum registro encontrado para este filtro.</p>";
+      return;
+    }
+
+    // 2. Renderiza os cards agrupados por cliente
+    chaves.forEach(chave => {
+      const c = agrupado[chave];
+
+      // Monta a mensagem de WhatsApp com Histórico Detalhado
+      let textoHistorico = "";
+      c.compras.forEach((item, idx) => {
+        textoHistorico += `\n📌 *Pedido ${idx + 1} (${item.dataHora}):*\n   ${item.itens} - R$ ${item.total.toFixed(2)}`;
+      });
+
+      const valorCobrar = c.totalPendente > 0 ? c.totalPendente : c.total;
+      const msgTexto = `Olá, *${c.cliente}*! Tudo bem?\n\nPassando para enviar o resumo do seu consumo:\n${textoHistorico}\n\n💰 *Total em aberto: R$ ${valorCobrar.toFixed(2)}*\n\nQuando puder acertar ou enviar o comprovante via Pix, agradecemos muito!`;
+
+      let numLimpo = c.telefone.replace(/\D/g, "");
+      if (numLimpo.length === 10 || numLimpo.length === 11) numLimpo = "55" + numLimpo;
+      const linkWhatsApp = `https://wa.me/${numLimpo}?text=${encodeURIComponent(msgTexto)}`;
+
+      // Monta HTML da listagem de compras
+      let itensHtml = "";
+      c.compras.slice().reverse().forEach(p => {
+        itensHtml += `
+            <div class="item-historico">
+              <div>
+                <strong>${p.dataHora}</strong> - <span class="badge badge-${p.status}">${p.status}</span><br>
+                <small>${p.itens}</small>
+              </div>
+              <div style="font-weight:bold;">R$ ${p.total.toFixed(2)}</div>
+            </div>
+          `;
+      });
+
+      const corTotal = c.totalPendente > 0 ? '#dc2626' : '#16a34a';
+
+      container.innerHTML += `
+          <div class="cliente-card">
+            <div class="cliente-header">
+              <div>
+                <div class="cliente-nome">${c.cliente}</div>
+                <div class="cliente-tel">${c.telefone || "Sem telefone cadastrado"}</div>
+              </div>
+              <div>
+                <div class="cliente-total" style="color: ${corTotal};">R$ ${c.total.toFixed(2)}</div>
+                <div class="cliente-pedidos">${c.compras.length} pedido(s)</div>
+              </div>
+            </div>
+
+            <details>
+              <summary>Ver detalhes e histórico de compras (${c.compras.length})</summary>
+              <div style="margin-top: 8px;">
+                ${itensHtml}
+              </div>
+            </details>
+
+            <div class="acoes-box">
+              ${numLimpo.length >= 10 ? `
+                <a href="${linkWhatsApp}" target="_blank" class="btn-wpp">
+                  💬 Cobrar com Histórico no WhatsApp
+                </a>
+              ` : ''}
+
+              <button class="btn-acao btn-pagar" onclick="alterarStatusCliente('${c.telefone}', '${c.cliente}', 'Pago')">
+                ✅ Marcar como Pago
+              </button>
+
+              <button class="btn-acao btn-cancelar" onclick="alterarStatusCliente('${c.telefone}', '${c.cliente}', 'Cancelado')">
+                ❌ Cancelar
+              </button>
+            </div>
+          </div>
+        `;
+    });
+  }
+
+  // Altera o status de todos os pedidos pendentes daquele cliente na planilha
+  async function alterarStatusCliente(telefone, cliente, novoStatus) {
+    const acaoNome = novoStatus === "Pago" ? "como PAGO" : "como CANCELADO";
+    if (!confirm(`Deseja realmente marcar todos os débitos de "${cliente}" ${acaoNome}?`)) {
+      return;
+    }
+
+    const payload = {
+      tipo: "ATUALIZAR_STATUS_CLIENTE",
+      senha: sessionStorage.getItem("adm_senha"),
+      telefone: telefone,
+      cliente: cliente,
+      novoStatus: novoStatus
+    };
+
+    try {
+      const res = await fetch(SCRIPT_URL, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify(payload)
+      });
+      const resp = await res.json();
+      if (resp.status === "sucesso") {
+        alert(`Status atualizado com sucesso!`);
+        carregarRelatorio();
+      } else {
+        alert("Erro: " + (resp.mensagem || "Não foi possível atualizar."));
+      }
+    } catch (err) {
+      alert("Erro de conexão ao atualizar status.");
+    }
+  }
+
+  carregarRelatorio();
+</script>
+</body>
+</html>
